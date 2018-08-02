@@ -1,0 +1,54 @@
+version: '2'
+services:
+  prometheus:
+        image: prom/prometheus:0.18.0
+        volumes:
+        - ./prometheus.yml:/etc/prometheus/prometheus.yml
+        - ./alert.rules:/etc/prometheus/alert.rules
+        -  prometheus_data:/prometheus
+        command:
+        - '-config.file=/etc/prometheus/prometheus.yml'
+        - '-alertmanager.url=http://alertmanager:9093'
+        ports:
+        - '9090:9090'
+  node-exporter:
+        image: prom/node-exporter
+        ports:
+            - '9100:9100'
+  grafana:
+        image: grafana/grafana:3.0.0-beta7
+        volumes:
+         - grafana_data:/var/lib/grafana
+        environment:
+            - GF_SECURITY_ADMIN_PASSWORD=pass
+        depends_on:
+            - prometheus
+        ports:
+            - "3000:3000"
+  alertmanager:
+        image: prom/alertmanager:0.1.1
+        volumes:
+        - ./alertmanager.yml:/alertmanager.yml
+        command:
+        - '-config.file=/alertmanager.yml'
+  ssl:
+        image: feinstruktur/lets-nginx:1.3
+        environment:
+            - EMAIL=<your email, e.g info@mydomain.com>
+            - DOMAIN=<your domain, e.g. mydomain.com>
+            - UPSTREAM=grafana:3000
+        ports:
+            - "443:443"
+        depends_on:
+            - grafana
+        volumes:
+        - letsencrypt:/etc/letsencrypt
+        - letsencrypt_backups:/var/lib/letsencrypt
+        - dhparam_cache:/cache
+
+volumes:
+    prometheus_data: {}
+    grafana_data: {}
+    letsencrypt: {}
+    letsencrypt_backups: {}
+    dhparam_cache: {}
